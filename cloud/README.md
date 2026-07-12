@@ -25,6 +25,12 @@ Manual:
 docs/despliegue-vps.md
 ```
 
+Manual especifico recomendado para Google Cloud:
+
+```text
+docs/despliegue-google-cloud.md
+```
+
 ## Arquitectura cloud administrada
 
 Para produccion de mayor escala se recomienda separar responsabilidades:

@@ -92,6 +92,7 @@ Restore:
 - [AWS](cloud/aws/README.md)
 - [Azure](cloud/azure/README.md)
 - [Google Cloud](cloud/gcp/README.md)
+- [Despliegue en Google Cloud Compute Engine](docs/despliegue-google-cloud.md)
 - [DigitalOcean](cloud/digitalocean/README.md)
 
 ## Checklist de produccion
