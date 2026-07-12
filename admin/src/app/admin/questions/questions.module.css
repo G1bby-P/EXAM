@@ -1,0 +1,138 @@
+.form {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.twoCols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.threeCols {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.formSection {
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+.formSection > span {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.alternativeRow {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 130px;
+  align-items: center;
+  gap: 10px;
+}
+
+.alternativeRow strong {
+  color: var(--text-soft);
+  font-size: 13px;
+}
+
+.context {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel-subtle);
+  padding: 12px;
+}
+
+.context strong {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.context ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-soft);
+  font-size: 13px;
+}
+
+.questionCell {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.questionCell strong {
+  overflow-wrap: anywhere;
+}
+
+.questionCell span {
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fileButton {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 0 14px;
+  transition:
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.fileButton:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.fileButton input {
+  display: none;
+}
+
+.importResult {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--text-soft);
+  font-size: 13px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+}
+
+.importResult strong {
+  color: var(--text);
+}
+
+@media (max-width: 680px) {
+  .twoCols,
+  .threeCols,
+  .alternativeRow {
+    grid-template-columns: 1fr;
+  }
+}

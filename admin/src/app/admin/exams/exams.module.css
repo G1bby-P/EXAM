@@ -1,0 +1,85 @@
+.form,
+.builder {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.twoCols,
+.threeCols {
+  display: grid;
+  gap: 12px;
+}
+
+.twoCols {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.threeCols {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.builderHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel-subtle);
+  padding: 12px;
+}
+
+.builderHeader strong,
+.examItems strong {
+  display: block;
+  font-size: 14px;
+}
+
+.builderHeader span,
+.examItems span {
+  color: var(--text-soft);
+  font-size: 13px;
+}
+
+.builderActions,
+.inlineForm {
+  display: flex;
+  gap: 8px;
+}
+
+.inlineForm {
+  align-items: center;
+}
+
+.inlineForm > * {
+  min-width: 0;
+}
+
+.examItems {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.examItems li {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel);
+  padding: 11px 12px;
+}
+
+@media (max-width: 760px) {
+  .twoCols,
+  .threeCols {
+    grid-template-columns: 1fr;
+  }
+
+  .inlineForm,
+  .builderHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

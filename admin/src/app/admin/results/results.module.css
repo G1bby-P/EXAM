@@ -1,0 +1,45 @@
+.detail {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.summary,
+.scoreLine {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel-subtle);
+  padding: 12px;
+}
+
+.summary strong,
+.scoreLine strong,
+.answer strong {
+  display: block;
+  font-size: 15px;
+}
+
+.summary span,
+.scoreLine span,
+.answer span {
+  color: var(--text-soft);
+  font-size: 13px;
+}
+
+.answers {
+  display: grid;
+  gap: 10px;
+}
+
+.answer {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel);
+  padding: 12px;
+}

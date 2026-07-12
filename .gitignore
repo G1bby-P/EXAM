@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+.next/
+coverage/
+.turbo/
+generated/
+
+# Environment files with real secrets
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+# Logs and runtime data
+*.log
+logs/
+backups/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Archives and temporary outputs
+*.zip
+work/
+tmp/
+temp/

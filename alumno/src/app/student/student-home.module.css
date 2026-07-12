@@ -1,0 +1,103 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.card,
+.empty,
+.note {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.card {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.cardHeader h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.cardHeader p {
+  margin: 7px 0 0;
+  color: var(--text-soft);
+  line-height: 1.45;
+}
+
+.cardHeader span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  border-radius: 999px;
+  background: var(--success-soft);
+  color: var(--success);
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.card dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.card dt {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.card dd {
+  margin: 4px 0 0;
+  color: var(--text);
+  font-weight: 800;
+}
+
+.empty {
+  grid-column: 1 / -1;
+  padding: 24px;
+  color: var(--text-soft);
+}
+
+.note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 14px 16px;
+  color: var(--text-soft);
+}
+
+.linkButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel);
+  padding: 0 14px;
+  font-weight: 800;
+}
+
+@media (max-width: 860px) {
+  .grid,
+  .card dl {
+    grid-template-columns: 1fr;
+  }
+}

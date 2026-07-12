@@ -1,0 +1,60 @@
+.page {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+  background:
+    linear-gradient(135deg, rgb(37 111 100 / 8%), transparent 42%),
+    var(--bg);
+}
+
+.panel {
+  width: min(420px, 100%);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.mark {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--brand);
+  color: #fff;
+}
+
+.brand span {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.brand h1 {
+  margin: 3px 0 0;
+  font-size: 22px;
+}
+
+.form {
+  display: grid;
+  gap: 14px;
+  padding: 22px;
+}
+
+.error {
+  margin: 0;
+  border-radius: 7px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  padding: 10px 12px;
+}

@@ -1,0 +1,259 @@
+.timers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.timers div {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 14px;
+}
+
+.timers svg {
+  color: var(--brand);
+}
+
+.timers span {
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.timers strong {
+  font-size: 24px;
+}
+
+.inlineError {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 14px;
+  border: 1px solid color-mix(in srgb, var(--danger) 38%, var(--line));
+  border-radius: 8px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  padding: 12px 14px;
+}
+
+.securityPanel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  align-items: stretch;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.securityPanel div {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 14px;
+}
+
+.securityPanel svg {
+  color: var(--brand);
+}
+
+.securityPanel span {
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.securityPanel strong {
+  font-size: 18px;
+}
+
+.securityNotice {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 14px;
+  border: 1px solid color-mix(in srgb, var(--warning) 44%, var(--line));
+  border-radius: 8px;
+  background: var(--warning-soft);
+  color: var(--warning);
+  padding: 12px 14px;
+}
+
+.securityGate {
+  display: grid;
+  place-items: center;
+  gap: 16px;
+  min-height: 360px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 36px 22px;
+  text-align: center;
+}
+
+.securityGate svg {
+  color: var(--brand);
+}
+
+.securityGate h2 {
+  margin: 0 0 6px;
+  font-size: 24px;
+}
+
+.securityGate p {
+  margin: 0;
+  color: var(--text-soft);
+  font-weight: 700;
+}
+
+.exam {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 18px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.exam textarea,
+.exam input {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.sidebar,
+.question {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.sidebar {
+  height: fit-content;
+  padding: 14px;
+}
+
+.progress {
+  display: grid;
+  gap: 9px;
+  margin-bottom: 14px;
+}
+
+.progress span {
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.progress div {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--panel-soft);
+}
+
+.progress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--brand);
+}
+
+.questionNav {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.questionNav button {
+  width: 100%;
+  height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--text-soft);
+  font-weight: 900;
+}
+
+.questionNav button:hover,
+.questionNav .active {
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+  border-color: var(--brand);
+}
+
+.question {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+}
+
+.questionMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.question h2 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.32;
+}
+
+.options {
+  display: grid;
+  gap: 10px;
+}
+
+.options label {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 13px;
+}
+
+.selectedOption {
+  border-color: var(--brand) !important;
+  background: var(--brand-soft) !important;
+}
+
+.options input {
+  margin-top: 3px;
+}
+
+.unsupported {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--warning-soft);
+  color: var(--warning);
+  padding: 14px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+@media (max-width: 900px) {
+  .timers,
+  .securityPanel,
+  .exam {
+    grid-template-columns: 1fr;
+  }
+}
