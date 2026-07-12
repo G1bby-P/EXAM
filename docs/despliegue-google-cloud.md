@@ -104,6 +104,56 @@ Compute Engine > VM instances > SSH
 
 Tambien se puede entrar usando Google Cloud CLI u OpenSSH, pero para una primera publicacion el boton SSH del navegador es suficiente.
 
+## 6.1. Despliegue automatico desde Cloud Shell
+
+El repositorio incluye un script para crear la VM, reservar IP, abrir firewall, instalar Docker, clonar el proyecto, generar `.env.production` y levantar Docker Compose:
+
+```text
+operations/gcp-deploy-compute-engine.sh
+```
+
+Uso recomendado desde Google Cloud Shell:
+
+```bash
+git clone https://github.com/G1bby-P/EXAM.git
+cd EXAM
+chmod +x operations/gcp-deploy-compute-engine.sh
+
+PROJECT_ID="tu-project-id" \
+ADMIN_HOST="admin.tu-dominio.com" \
+STUDENT_HOST="alumno.tu-dominio.com" \
+API_HOST="api.tu-dominio.com" \
+LETSENCRYPT_EMAIL="correo@tu-dominio.com" \
+ZONE="us-central1-a" \
+MACHINE_TYPE="e2-medium" \
+BOOT_DISK_SIZE_GB="50" \
+./operations/gcp-deploy-compute-engine.sh
+```
+
+El script muestra la IP publica asignada. Antes de que HTTPS funcione, los registros DNS `A` de `ADMIN_HOST`, `STUDENT_HOST` y `API_HOST` deben apuntar a esa IP.
+
+Si los DNS todavia no apuntan a la IP, el script se detiene antes de pedir certificados. Actualizar los DNS y volver a ejecutar el mismo comando. La VM y la IP existentes se reutilizan.
+
+Para levantar los contenedores sin pedir certificados todavia:
+
+```bash
+RUN_CERTBOT=0 \
+PROJECT_ID="tu-project-id" \
+ADMIN_HOST="admin.tu-dominio.com" \
+STUDENT_HOST="alumno.tu-dominio.com" \
+API_HOST="api.tu-dominio.com" \
+LETSENCRYPT_EMAIL="correo@tu-dominio.com" \
+./operations/gcp-deploy-compute-engine.sh
+```
+
+Las credenciales iniciales no se imprimen en GitHub. Quedan en la VM:
+
+```text
+/opt/exam-platform/DEPLOYMENT_CREDENTIALS.txt
+```
+
+Guardar esos valores en un gestor de contrasenas y borrar el archivo cuando ya no sea necesario.
+
 ## 7. Preparar el servidor
 
 Dentro de la VM ejecutar:
