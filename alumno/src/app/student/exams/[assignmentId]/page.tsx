@@ -211,19 +211,24 @@ export default function StudentExamPage() {
     [answers, assignmentId, attempt, currentQuestion, router],
   );
 
-  const saveCurrentAnswer = useCallback(async () => {
-    if (!attempt || !currentQuestion || submittedRef.current) return;
+  const saveAnswerPayload = useCallback(async (question: ExamQuestion, answer: SaveAnswerPayload | undefined) => {
+    if (!attempt || submittedRef.current) return;
     setSaving(true);
     setError(null);
     try {
-      await studentApi.saveAnswer(attempt.id, currentQuestion.id, normalizePayload(currentQuestion, answers[currentQuestion.id]));
+      await studentApi.saveAnswer(attempt.id, question.id, normalizePayload(question, answer));
       setLastSavedAt(new Date().toISOString());
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo guardar la respuesta.");
     } finally {
       setSaving(false);
     }
-  }, [answers, attempt, currentQuestion]);
+  }, [attempt]);
+
+  const saveCurrentAnswer = useCallback(async () => {
+    if (!currentQuestion) return;
+    await saveAnswerPayload(currentQuestion, answers[currentQuestion.id]);
+  }, [answers, currentQuestion, saveAnswerPayload]);
 
   const goNext = useCallback(
     async (automatic = false) => {
@@ -377,11 +382,14 @@ export default function StudentExamPage() {
     }
   }, [attempt, generalSeconds, submitAttempt]);
 
-  function updateAnswer(question: ExamQuestion, value: SaveAnswerPayload) {
+  function updateAnswer(question: ExamQuestion, value: SaveAnswerPayload, saveImmediately = false) {
     setAnswers((current) => ({
       ...current,
       [question.id]: value,
     }));
+    if (saveImmediately) {
+      void saveAnswerPayload(question, value);
+    }
   }
 
   if (!attempt) {
@@ -549,9 +557,9 @@ export default function StudentExamPage() {
                           const next = event.target.checked
                             ? Array.from(new Set([...previous, option.id]))
                             : previous.filter((id) => id !== option.id);
-                          updateAnswer(currentQuestion, { selectedOptionIds: next });
+                          updateAnswer(currentQuestion, { selectedOptionIds: next }, true);
                         } else {
-                          updateAnswer(currentQuestion, { selectedOptionIds: [option.id] });
+                          updateAnswer(currentQuestion, { selectedOptionIds: [option.id] }, true);
                         }
                       }}
                     />
