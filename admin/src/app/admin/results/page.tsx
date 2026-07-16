@@ -12,22 +12,101 @@ import { ErrorState, LoadingState } from "@/components/ui/StatusState";
 import { formatDate, fullName, numberText } from "@/lib/format";
 import { apiRequest } from "@/lib/api";
 import { adminApi, postAction, updateResource } from "@/lib/resources";
-import type { Paginated, Result } from "@/types/api";
+import type { Paginated, QuestionType, Result } from "@/types/api";
 import styles from "./results.module.css";
+
+type AnswerReviewStatus = "NOT_REQUIRED" | "PENDING_REVIEW" | "APPROVED" | "REJECTED";
+
+interface OptionSnapshot {
+  id: string;
+  label?: string | null;
+  text: string;
+  sortOrder?: number;
+}
+
+interface QuestionDetail {
+  id: string;
+  type: QuestionType;
+  prompt: string;
+  optionsSnapshot?: OptionSnapshot[] | null;
+  sortOrder?: number;
+  points?: string | number | null;
+  isRequired?: boolean;
+}
 
 interface AnswerDetail {
   id: string;
+  examVersionQuestionId?: string;
   answerText?: string | null;
   selectedOptionIds?: string[] | null;
+  fileAssetId?: string | null;
   score?: string | null;
-  reviewStatus: string;
+  reviewStatus: AnswerReviewStatus;
   feedback?: string | null;
+  examVersionQuestion?: QuestionDetail;
 }
 
 interface ResultDetail extends Result {
+  examVersion?: Result["examVersion"] & {
+    questions?: QuestionDetail[];
+  };
   attempt?: {
     answers?: AnswerDetail[];
   };
+}
+
+const questionTypeLabels: Record<QuestionType, string> = {
+  SINGLE_CHOICE: "Opcion multiple",
+  MULTIPLE_CHOICE: "Seleccion multiple",
+  TRUE_FALSE: "Verdadero/Falso",
+  SHORT_TEXT: "Respuesta corta",
+  ESSAY: "Desarrollo",
+  FILE_UPLOAD: "Archivo",
+  CLINICAL_CASE: "Caso clinico",
+};
+
+const reviewStatusLabels: Record<AnswerReviewStatus, string> = {
+  NOT_REQUIRED: "Revision no requerida",
+  PENDING_REVIEW: "Pendiente de revision",
+  APPROVED: "Revision aprobada",
+  REJECTED: "Revision rechazada",
+};
+
+function getAnswerRows(result: ResultDetail) {
+  const answers = result.attempt?.answers ?? [];
+  const byQuestion = new Map(
+    answers
+      .map((answer) => [answer.examVersionQuestionId ?? answer.examVersionQuestion?.id, answer] as const)
+      .filter((entry): entry is [string, AnswerDetail] => Boolean(entry[0])),
+  );
+  const questions = result.examVersion?.questions ?? [];
+  if (questions.length > 0) {
+    return questions.map((question) => ({ question, answer: byQuestion.get(question.id) }));
+  }
+  return answers.map((answer) => ({ question: answer.examVersionQuestion, answer }));
+}
+
+function getSelectedOptionText(answer: AnswerDetail, question?: QuestionDetail) {
+  const selectedIds = Array.isArray(answer.selectedOptionIds) ? answer.selectedOptionIds : [];
+  if (selectedIds.length === 0) return null;
+  const options = question?.optionsSnapshot ?? answer.examVersionQuestion?.optionsSnapshot ?? [];
+  return selectedIds
+    .map((id) => {
+      const option = options.find((item) => item.id === id);
+      if (!option) return id;
+      return `${option.label ? `${option.label}. ` : ""}${option.text}`;
+    })
+    .join("; ");
+}
+
+function getStudentAnswerText(answer?: AnswerDetail, question?: QuestionDetail) {
+  if (!answer) return "Sin respuesta";
+  const textAnswer = answer.answerText?.trim();
+  if (textAnswer) return textAnswer;
+  const selectedOptionText = getSelectedOptionText(answer, question);
+  if (selectedOptionText) return selectedOptionText;
+  if (answer.fileAssetId) return "Archivo adjunto";
+  return "Sin respuesta";
 }
 
 export default function ResultsPage() {
@@ -135,39 +214,68 @@ export default function ResultsPage() {
               <span>{numberText(selected.score)} de {numberText(selected.maxScore)} puntos</span>
             </div>
             <div className={styles.answers}>
-              {(selected.attempt?.answers ?? []).map((answer) => (
-                <form key={answer.id} className={styles.answer} onSubmit={(event) => void reviewAnswer(event, answer.id)}>
-                  <div>
-                    <strong>{answer.answerText || answer.selectedOptionIds?.join(", ") || "Sin respuesta textual"}</strong>
-                    <span>{answer.reviewStatus} - puntaje actual {numberText(answer.score)}</span>
-                  </div>
-                  <Field label="Puntaje">
-                    <TextInput
-                      type="number"
-                      min="0"
-                      value={reviewPayload[answer.id]?.score ?? ""}
-                      onChange={(event) =>
-                        setReviewPayload((value) => ({
-                          ...value,
-                          [answer.id]: { score: event.target.value, feedback: value[answer.id]?.feedback ?? "" },
-                        }))
-                      }
-                    />
-                  </Field>
-                  <Field label="Retroalimentacion">
-                    <TextArea
-                      value={reviewPayload[answer.id]?.feedback ?? ""}
-                      onChange={(event) =>
-                        setReviewPayload((value) => ({
-                          ...value,
-                          [answer.id]: { score: value[answer.id]?.score ?? "", feedback: event.target.value },
-                        }))
-                      }
-                    />
-                  </Field>
-                  <Button type="submit" variant="secondary">Guardar revision</Button>
-                </form>
-              ))}
+              {getAnswerRows(selected).map(({ question, answer }, index) => {
+                const canReview = Boolean(answer && answer.reviewStatus !== "NOT_REQUIRED");
+                const answerKey = question?.id ?? answer?.id ?? `answer-${index}`;
+                return (
+                  <article key={answerKey} className={styles.answer}>
+                    <div className={styles.answerHeader}>
+                      <div>
+                        <strong>{question?.prompt ?? "Pregunta sin texto disponible"}</strong>
+                        <span>
+                          {question
+                            ? `${questionTypeLabels[question.type]} - ${numberText(question.points)} punto(s) - ${
+                                question.isRequired ? "Obligatoria" : "Opcional"
+                              }`
+                            : "Pregunta no disponible"}
+                        </span>
+                      </div>
+                      <span className={styles.reviewStatus}>
+                        {answer ? reviewStatusLabels[answer.reviewStatus] : "Sin respuesta guardada"}
+                      </span>
+                    </div>
+                    <div className={styles.responseBox}>
+                      <span>Respuesta del alumno</span>
+                      <strong>{getStudentAnswerText(answer, question)}</strong>
+                    </div>
+                    <div className={styles.answerMeta}>
+                      <span>Puntaje actual: {numberText(answer?.score)}</span>
+                    </div>
+                    {canReview && answer ? (
+                      <form className={styles.reviewForm} onSubmit={(event) => void reviewAnswer(event, answer.id)}>
+                        <Field label="Puntaje">
+                          <TextInput
+                            type="number"
+                            min="0"
+                            max={question?.points ? Number(question.points) : undefined}
+                            value={reviewPayload[answer.id]?.score ?? ""}
+                            onChange={(event) =>
+                              setReviewPayload((value) => ({
+                                ...value,
+                                [answer.id]: { score: event.target.value, feedback: value[answer.id]?.feedback ?? "" },
+                              }))
+                            }
+                          />
+                        </Field>
+                        <Field label="Retroalimentacion">
+                          <TextArea
+                            value={reviewPayload[answer.id]?.feedback ?? ""}
+                            onChange={(event) =>
+                              setReviewPayload((value) => ({
+                                ...value,
+                                [answer.id]: { score: value[answer.id]?.score ?? "", feedback: event.target.value },
+                              }))
+                            }
+                          />
+                        </Field>
+                        <Button type="submit" variant="secondary">Guardar revision</Button>
+                      </form>
+                    ) : (
+                      <p className={styles.reviewNote}>Esta respuesta se califica automaticamente y no requiere revision manual.</p>
+                    )}
+                  </article>
+                );
+              })}
             </div>
             <Button icon={<Send size={16} aria-hidden />} onClick={() => void publishResult()}>
               Publicar resultado

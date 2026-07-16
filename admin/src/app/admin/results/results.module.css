@@ -43,3 +43,58 @@
   background: var(--panel);
   padding: 12px;
 }
+
+.answerHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.answerHeader strong {
+  overflow-wrap: anywhere;
+}
+
+.reviewStatus {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--panel-subtle);
+  padding: 6px 9px;
+  font-weight: 700;
+}
+
+.responseBox {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel-subtle);
+  padding: 10px;
+}
+
+.responseBox strong {
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.answerMeta,
+.reviewNote {
+  color: var(--text-soft);
+  font-size: 13px;
+}
+
+.reviewForm {
+  display: grid;
+  gap: 12px;
+}
+
+@media (max-width: 760px) {
+  .answerHeader {
+    display: grid;
+  }
+
+  .reviewStatus {
+    width: fit-content;
+  }
+}

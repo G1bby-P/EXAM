@@ -547,12 +547,33 @@ export class ExamsService {
     for (const question of versionQuestions) {
       const answer = question.answers[0];
       if (!answer) {
-        if (question.isRequired) manualPending = true;
+        if (question.isRequired) {
+          updates.push(
+            this.prisma.attemptAnswer.create({
+              data: {
+                attemptId,
+                examVersionQuestionId: question.id,
+                score: new Prisma.Decimal(0),
+                isCorrect: false,
+                reviewStatus: AnswerReviewStatus.NOT_REQUIRED,
+              },
+            }),
+          );
+        }
         continue;
       }
 
       if (this.requiresManualReview(question.type)) {
-        manualPending = true;
+        if (this.hasManualAnswerContent(answer)) {
+          manualPending = true;
+        } else {
+          updates.push(
+            this.prisma.attemptAnswer.update({
+              where: { id: answer.id },
+              data: { score: new Prisma.Decimal(0), isCorrect: false, reviewStatus: AnswerReviewStatus.NOT_REQUIRED },
+            }),
+          );
+        }
         continue;
       }
 
@@ -713,6 +734,10 @@ export class ExamsService {
       type === QuestionType.FILE_UPLOAD ||
       type === QuestionType.CLINICAL_CASE
     );
+  }
+
+  private hasManualAnswerContent(answer: { answerText: string | null; fileAssetId: string | null }): boolean {
+    return Boolean(answer.fileAssetId || answer.answerText?.trim());
   }
 
   private buildQuestionVersionMetadata(

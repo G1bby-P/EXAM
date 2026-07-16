@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import {
   AnswerReviewStatus,
   AttemptStatus,
@@ -57,8 +57,19 @@ export class ResultsService {
       where: { id },
       include: {
         user: { select: { id: true, email: true, firstName: true, lastName: true } },
-        examVersion: true,
-        attempt: { include: { answers: true } },
+        examVersion: {
+          include: {
+            questions: { orderBy: { sortOrder: "asc" } },
+          },
+        },
+        attempt: {
+          include: {
+            answers: {
+              include: { examVersionQuestion: true },
+              orderBy: { createdAt: "asc" },
+            },
+          },
+        },
       },
     });
     if (!result) throw new NotFoundException("Result not found.");
@@ -73,6 +84,9 @@ export class ResultsService {
       include: { attempt: true, examVersionQuestion: true },
     });
     if (!answer) throw new NotFoundException("Answer not found.");
+    if (answer.reviewStatus === AnswerReviewStatus.NOT_REQUIRED) {
+      throw new BadRequestException("This answer does not require manual review.");
+    }
 
     await this.prisma.attemptAnswer.update({
       where: { id: answerId },
