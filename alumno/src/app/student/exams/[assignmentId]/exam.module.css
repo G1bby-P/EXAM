@@ -181,11 +181,16 @@
   font-weight: 900;
 }
 
-.questionNav button:hover,
+.questionNav button:not(:disabled):hover,
 .questionNav .active {
   background: var(--brand-soft);
   color: var(--brand-strong);
   border-color: var(--brand);
+}
+
+.questionNav button:disabled:not(.active) {
+  cursor: not-allowed;
+  opacity: 0.48;
 }
 
 .question {

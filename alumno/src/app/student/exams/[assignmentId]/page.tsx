@@ -45,6 +45,7 @@ export default function StudentExamPage() {
   const [securityNotice, setSecurityNotice] = useState<string | null>(null);
   const [securitySummary, setSecuritySummary] = useState({ warnings: 0, critical: 0 });
   const submittedRef = useRef(false);
+  const hasEnteredSecureModeRef = useRef(false);
   const lastSecurityEventAtRef = useRef<Record<string, number>>({});
 
   const questions = useMemo(() => attempt?.examVersion.questions ?? [], [attempt]);
@@ -160,7 +161,7 @@ export default function StudentExamPage() {
   }, [attempt]);
 
   const submitAttempt = useCallback(
-    async (reason: "manual" | "general-time" | "question-time") => {
+    async (reason: "manual" | "general-time" | "question-time" | "security-violation") => {
       if (!attempt || submittedRef.current) return;
       submittedRef.current = true;
       setSubmitting(true);
@@ -243,11 +244,15 @@ export default function StudentExamPage() {
       const active = Boolean(document.fullscreenElement);
       setIsFullscreen(active);
       if (active) {
+        hasEnteredSecureModeRef.current = true;
         setSecurityNotice(null);
         recordSecurityEvent("FULLSCREEN_ENTERED", "INFO");
       } else {
-        setSecurityNotice("Pantalla completa desactivada. Activa pantalla completa para continuar.");
+        setSecurityNotice("Pantalla completa desactivada. El examen se finalizara automaticamente.");
         recordSecurityEvent("FULLSCREEN_EXITED", "CRITICAL");
+        if (hasEnteredSecureModeRef.current) {
+          void submitAttempt("security-violation");
+        }
       }
     };
 
@@ -256,7 +261,7 @@ export default function StudentExamPage() {
     if (!active) setSecurityNotice("Activa pantalla completa para comenzar el examen.");
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
-  }, [attempt, recordSecurityEvent]);
+  }, [attempt, recordSecurityEvent, submitAttempt]);
 
   useEffect(() => {
     if (!attempt || submittedRef.current) return;
@@ -429,10 +434,8 @@ export default function StudentExamPage() {
               <li key={question.id}>
                 <button
                   className={index === currentIndex ? styles.active : ""}
-                  onClick={() => {
-                    void saveCurrentAnswer();
-                    setCurrentIndex(index);
-                  }}
+                  disabled={index !== currentIndex}
+                  aria-label={`Pregunta ${index + 1}${index < currentIndex ? " bloqueada" : ""}`}
                 >
                   {index + 1}
                 </button>
@@ -488,11 +491,7 @@ export default function StudentExamPage() {
             <Button
               variant="secondary"
               icon={<ChevronLeft size={16} aria-hidden />}
-              disabled={currentIndex === 0}
-              onClick={() => {
-                void saveCurrentAnswer();
-                setCurrentIndex((value) => Math.max(0, value - 1));
-              }}
+              disabled
             >
               Anterior
             </Button>
