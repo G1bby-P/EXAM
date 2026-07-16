@@ -379,6 +379,19 @@ export class ExamsService {
   }
 
   async assign(examId: string, dto: AssignExamDto, actorUserId?: string) {
+    const startsAt = dto.startsAt ? new Date(dto.startsAt) : undefined;
+    const dueAt = dto.dueAt ? new Date(dto.dueAt) : undefined;
+
+    if (startsAt && Number.isNaN(startsAt.getTime())) {
+      throw new BadRequestException("Assignment start date is invalid.");
+    }
+    if (dueAt && Number.isNaN(dueAt.getTime())) {
+      throw new BadRequestException("Assignment due date is invalid.");
+    }
+    if (startsAt && dueAt && dueAt <= startsAt) {
+      throw new BadRequestException("Assignment due date must be after the start date.");
+    }
+
     const examVersion =
       dto.examVersionId !== undefined
         ? await this.prisma.examVersion.findUnique({ where: { id: dto.examVersionId } })
@@ -397,8 +410,8 @@ export class ExamsService {
         examVersionId: examVersion.id,
         userId: dto.userId,
         assignedById: actorUserId,
-        startsAt: dto.startsAt ? new Date(dto.startsAt) : undefined,
-        dueAt: dto.dueAt ? new Date(dto.dueAt) : undefined,
+        startsAt,
+        dueAt,
         maxAttemptsOverride: dto.maxAttemptsOverride,
       },
       include: { exam: true, examVersion: true, user: true },

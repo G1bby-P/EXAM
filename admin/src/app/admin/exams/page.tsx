@@ -131,11 +131,17 @@ export default function ExamsPage() {
     event.preventDefault();
     if (!selectedExam) return;
     setError(null);
+    const startsAt = assignmentPayload.startsAt ? new Date(assignmentPayload.startsAt) : undefined;
+    const dueAt = assignmentPayload.dueAt ? new Date(assignmentPayload.dueAt) : undefined;
+    if (startsAt && dueAt && dueAt <= startsAt) {
+      setError("La fecha de vencimiento debe ser posterior a la fecha de inicio.");
+      return;
+    }
     try {
       await postAction(`/exams/${selectedExam.id}/assign`, {
         userId: assignmentPayload.userId,
-        startsAt: assignmentPayload.startsAt ? new Date(assignmentPayload.startsAt).toISOString() : undefined,
-        dueAt: assignmentPayload.dueAt ? new Date(assignmentPayload.dueAt).toISOString() : undefined,
+        startsAt: startsAt?.toISOString(),
+        dueAt: dueAt?.toISOString(),
       });
       setAssignOpen(false);
     } catch (err) {
