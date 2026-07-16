@@ -55,6 +55,23 @@ Para monitoreo:
 docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.monitoring.yml up -d
 ```
 
+## Demo local con Docker Desktop
+
+Para una demostracion local en Windows sin editar el archivo `hosts`, usar el override de demo:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.demo.yml --env-file .env.production up -d --build
+docker compose --env-file .env.production --profile seed up api-seed
+```
+
+URLs:
+
+```text
+Panel administrador: http://localhost:8081/login
+Modulo alumno: http://localhost:8082/login
+API health: http://localhost:8083/api/v1/health
+```
+
 ## Backups
 
 Backup automatico:
