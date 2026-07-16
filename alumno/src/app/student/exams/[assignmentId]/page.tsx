@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/student/PageHeader";
 import { Button } from "@/components/ui/Button";
-import { ErrorState, LoadingState } from "@/components/ui/StatusState";
+import { LoadingState } from "@/components/ui/StatusState";
 import { TextArea } from "@/components/ui/Field";
 import { clearStoredAttempt, loadStoredAttempt, storeAttempt } from "@/lib/attempt-storage";
 import { formatDuration } from "@/lib/format";
@@ -15,6 +15,7 @@ import styles from "./exam.module.css";
 
 const secondsPerQuestion = Number(process.env.NEXT_PUBLIC_SECONDS_PER_QUESTION ?? 60);
 const autosaveIntervalSeconds = Number(process.env.NEXT_PUBLIC_AUTOSAVE_INTERVAL_SECONDS ?? 10);
+const preExamNoticeSeconds = 30;
 
 function isObjective(question: ExamQuestion): boolean {
   return ["SINGLE_CHOICE", "MULTIPLE_CHOICE", "TRUE_FALSE"].includes(question.type);
@@ -26,6 +27,13 @@ function normalizePayload(question: ExamQuestion, answer: SaveAnswerPayload | un
     return { selectedOptionIds: answer.selectedOptionIds ?? [] };
   }
   return { answerText: answer.answerText ?? "" };
+}
+
+function hasRequiredAnswer(question: ExamQuestion, answer: SaveAnswerPayload | undefined): boolean {
+  if (!question.isRequired) return true;
+  if (isObjective(question)) return Boolean(answer?.selectedOptionIds?.length);
+  if (question.type === "FILE_UPLOAD") return true;
+  return Boolean(answer?.answerText?.trim());
 }
 
 export default function StudentExamPage() {
@@ -40,6 +48,9 @@ export default function StudentExamPage() {
   const [saving, setSaving] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [startRequested, setStartRequested] = useState(false);
+  const [preStartSeconds, setPreStartSeconds] = useState(preExamNoticeSeconds);
   const [error, setError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [securityNotice, setSecurityNotice] = useState<string | null>(null);
@@ -115,7 +126,9 @@ export default function StudentExamPage() {
         setCurrentIndex(Math.min(stored.currentIndex, Math.max(0, stored.attempt.examVersion.questions.length - 1)));
         return;
       }
+      if (!startRequested) return;
       try {
+        setStarting(true);
         const createdAttempt = await studentApi.startAttempt(assignmentId);
         if (!active) return;
         setAttempt(createdAttempt);
@@ -127,14 +140,25 @@ export default function StudentExamPage() {
         });
       } catch (err) {
         if (!active) return;
+        setStartRequested(false);
         setError(err instanceof Error ? err.message : "No se pudo iniciar el examen.");
+      } finally {
+        if (active) setStarting(false);
       }
     }
     void start();
     return () => {
       active = false;
     };
-  }, [assignmentId]);
+  }, [assignmentId, startRequested]);
+
+  useEffect(() => {
+    if (attempt || startRequested || preStartSeconds <= 0) return;
+    const timer = window.setInterval(() => {
+      setPreStartSeconds((value) => Math.max(0, value - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [attempt, preStartSeconds, startRequested]);
 
   useEffect(() => {
     if (!attempt) return;
@@ -161,13 +185,17 @@ export default function StudentExamPage() {
   }, [attempt]);
 
   const submitAttempt = useCallback(
-    async (reason: "manual" | "general-time" | "question-time" | "security-violation") => {
+    async (
+      reason: "manual" | "general-time" | "question-time" | "security-violation",
+      options: { saveCurrentAnswer?: boolean } = {},
+    ) => {
       if (!attempt || submittedRef.current) return;
       submittedRef.current = true;
       setSubmitting(true);
       setError(null);
       try {
-        if (currentQuestion) {
+        const shouldSaveCurrentAnswer = options.saveCurrentAnswer ?? true;
+        if (shouldSaveCurrentAnswer && currentQuestion) {
           await studentApi.saveAnswer(attempt.id, currentQuestion.id, normalizePayload(currentQuestion, answers[currentQuestion.id]));
         }
         const result = await studentApi.submitAttempt(attempt.id);
@@ -199,6 +227,10 @@ export default function StudentExamPage() {
 
   const goNext = useCallback(
     async (automatic = false) => {
+      if (currentQuestion && !hasRequiredAnswer(currentQuestion, answers[currentQuestion.id])) {
+        setError("Debes responder la pregunta antes de avanzar.");
+        return;
+      }
       await saveCurrentAnswer();
       if (currentIndex >= questions.length - 1) {
         if (automatic) {
@@ -209,7 +241,7 @@ export default function StudentExamPage() {
       setCurrentIndex((value) => value + 1);
       setQuestionSeconds(secondsPerQuestion);
     },
-    [currentIndex, questions.length, saveCurrentAnswer, submitAttempt],
+    [answers, currentIndex, currentQuestion, questions.length, saveCurrentAnswer, submitAttempt],
   );
 
   useEffect(() => {
@@ -221,6 +253,11 @@ export default function StudentExamPage() {
     const timer = window.setInterval(() => {
       setQuestionSeconds((value) => {
         if (value <= 1) {
+          if (currentQuestion && !hasRequiredAnswer(currentQuestion, answers[currentQuestion.id])) {
+            setError("El tiempo de la pregunta termino sin respuesta. El examen se finalizara automaticamente.");
+            void submitAttempt("question-time", { saveCurrentAnswer: false });
+            return 0;
+          }
           void goNext(true);
           return secondsPerQuestion;
         }
@@ -228,7 +265,7 @@ export default function StudentExamPage() {
       });
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [attempt, goNext]);
+  }, [answers, attempt, currentQuestion, goNext, submitAttempt]);
 
   useEffect(() => {
     if (!attempt || submittedRef.current) return;
@@ -251,7 +288,7 @@ export default function StudentExamPage() {
         setSecurityNotice("Pantalla completa desactivada. El examen se finalizara automaticamente.");
         recordSecurityEvent("FULLSCREEN_EXITED", "CRITICAL");
         if (hasEnteredSecureModeRef.current) {
-          void submitAttempt("security-violation");
+          void submitAttempt("security-violation", { saveCurrentAnswer: false });
         }
       }
     };
@@ -347,10 +384,52 @@ export default function StudentExamPage() {
     }));
   }
 
-  if (error && !attempt) return <ErrorState message={error} />;
-  if (!attempt || !currentQuestion) return <LoadingState label="Preparando examen" />;
+  if (!attempt) {
+    return (
+      <>
+        <PageHeader
+          title="Aviso antes de iniciar"
+          description="Lee las condiciones del examen. El intento se creara despues de este aviso."
+        />
+        {error ? (
+          <div className={styles.inlineError}>
+            <AlertTriangle size={18} aria-hidden />
+            <span>{error}</span>
+          </div>
+        ) : null}
+        <section className={styles.preStartNotice}>
+          <ShieldAlert size={46} aria-hidden />
+          <div>
+            <h2>Precauciones obligatorias</h2>
+            <p>El examen se habilitara cuando termine el contador de seguridad.</p>
+          </div>
+          <ul>
+            <li>Solo podras avanzar cuando hayas respondido la pregunta actual.</li>
+            <li>No podras regresar a preguntas anteriores despues de avanzar.</li>
+            <li>El examen debe mantenerse en pantalla completa durante todo el intento.</li>
+            <li>Si sales de pantalla completa, el examen se cerrara automaticamente.</li>
+            <li>Por seguridad, esa salida no guarda la respuesta que este sin guardar.</li>
+          </ul>
+          <div className={styles.preStartCountdown}>
+            <span>Inicio disponible en</span>
+            <strong>{formatDuration(preStartSeconds)}</strong>
+          </div>
+          <Button
+            icon={<ShieldAlert size={16} aria-hidden />}
+            disabled={preStartSeconds > 0 || starting}
+            onClick={() => setStartRequested(true)}
+          >
+            {starting ? "Iniciando" : "Entiendo, iniciar examen"}
+          </Button>
+        </section>
+      </>
+    );
+  }
+
+  if (!currentQuestion) return <LoadingState label="Preparando examen" />;
 
   const currentAnswer = answers[currentQuestion.id] ?? {};
+  const canLeaveCurrentQuestion = hasRequiredAnswer(currentQuestion, currentAnswer);
 
   return (
     <>
@@ -358,7 +437,12 @@ export default function StudentExamPage() {
         title={attempt.examVersion.title}
         description={attempt.examVersion.instructions ?? "Responde cada pregunta antes de avanzar."}
         actions={
-          <Button variant="danger" icon={<Send size={16} aria-hidden />} disabled={submitting} onClick={() => void submitAttempt("manual")}>
+          <Button
+            variant="danger"
+            icon={<Send size={16} aria-hidden />}
+            disabled={submitting || !canLeaveCurrentQuestion}
+            onClick={() => void submitAttempt("manual")}
+          >
             Finalizar
           </Button>
         }
@@ -487,6 +571,12 @@ export default function StudentExamPage() {
               placeholder="Escribe tu respuesta"
             />
           )}
+          {!canLeaveCurrentQuestion ? (
+            <div className={styles.answerNotice}>
+              <AlertTriangle size={17} aria-hidden />
+              <span>Debes responder esta pregunta para poder avanzar.</span>
+            </div>
+          ) : null}
           <footer className={styles.actions}>
             <Button
               variant="secondary"
@@ -499,11 +589,11 @@ export default function StudentExamPage() {
               Guardar
             </Button>
             {currentIndex >= questions.length - 1 ? (
-              <Button icon={<Send size={16} aria-hidden />} disabled={submitting} onClick={() => void submitAttempt("manual")}>
+              <Button icon={<Send size={16} aria-hidden />} disabled={submitting || !canLeaveCurrentQuestion} onClick={() => void submitAttempt("manual")}>
                 Finalizar examen
               </Button>
             ) : (
-              <Button icon={<ChevronRight size={16} aria-hidden />} onClick={() => void goNext(false)}>
+              <Button icon={<ChevronRight size={16} aria-hidden />} disabled={!canLeaveCurrentQuestion} onClick={() => void goNext(false)}>
                 Siguiente
               </Button>
             )}
