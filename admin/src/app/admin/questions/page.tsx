@@ -1,6 +1,6 @@
 "use client";
 
-import { FileUp, ImagePlus, Paperclip, Plus, RefreshCw, Settings2 } from "lucide-react";
+import { FileUp, ImagePlus, Paperclip, Plus, RefreshCw, Settings2, Trash2 } from "lucide-react";
 import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { Badge } from "@/components/ui/Badge";
@@ -9,7 +9,7 @@ import { DataTable, type Column } from "@/components/ui/DataTable";
 import { Field, SelectInput, TextArea, TextInput } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { ErrorState, LoadingState } from "@/components/ui/StatusState";
-import { adminApi, createResource } from "@/lib/resources";
+import { adminApi, createResource, deleteResource } from "@/lib/resources";
 import type {
   Alternative,
   Paginated,
@@ -255,6 +255,20 @@ export default function QuestionsPage() {
     }
   }
 
+  async function archiveQuestion(question: Question) {
+    const confirmed = window.confirm(
+      "La pregunta se eliminara del banco activo, pero quedara archivada para conservar el historial. ¿Deseas continuar?",
+    );
+    if (!confirmed) return;
+    setError(null);
+    try {
+      await deleteResource(`/questions/${question.id}`);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo eliminar la pregunta.");
+    }
+  }
+
   const columns: Column<Question>[] = [
     {
       key: "prompt",
@@ -298,6 +312,14 @@ export default function QuestionsPage() {
             }}
           >
             Medios
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            icon={<Trash2 size={15} aria-hidden />}
+            onClick={() => void archiveQuestion(question)}
+          >
+            Eliminar
           </Button>
         </div>
       ),

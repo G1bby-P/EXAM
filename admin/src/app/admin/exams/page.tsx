@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardPlus, Plus, RefreshCw, Send, Settings2, Upload } from "lucide-react";
+import { ClipboardPlus, Plus, RefreshCw, Send, Settings2, Upload, Users } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { Badge } from "@/components/ui/Badge";
@@ -39,7 +39,13 @@ export default function ExamsPage() {
   });
   const [sectionPayload, setSectionPayload] = useState({ title: "", description: "", sortOrder: "1" });
   const [questionPayload, setQuestionPayload] = useState({ sectionId: "", questionId: "", sortOrder: "1", points: "1" });
-  const [assignmentPayload, setAssignmentPayload] = useState({ userId: "", startsAt: "", dueAt: "" });
+  const [assignmentPayload, setAssignmentPayload] = useState({
+    userIds: [] as string[],
+    allStudents: false,
+    startsAt: "",
+    dueAt: "",
+  });
+  const studentUsers = users.filter((user) => user.status === "ACTIVE" && user.roles.includes("STUDENT"));
 
   async function refresh() {
     setLoading(true);
@@ -127,6 +133,18 @@ export default function ExamsPage() {
     }
   }
 
+  function openAssignModal() {
+    setAssignmentPayload({ userIds: [], allStudents: false, startsAt: "", dueAt: "" });
+    setAssignOpen(true);
+  }
+
+  function toggleAssignmentUser(userId: string, checked: boolean) {
+    setAssignmentPayload((value) => ({
+      ...value,
+      userIds: checked ? Array.from(new Set([...value.userIds, userId])) : value.userIds.filter((id) => id !== userId),
+    }));
+  }
+
   async function assignExam(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedExam) return;
@@ -137,9 +155,14 @@ export default function ExamsPage() {
       setError("La fecha de vencimiento debe ser posterior a la fecha de inicio.");
       return;
     }
+    if (!assignmentPayload.allStudents && assignmentPayload.userIds.length === 0) {
+      setError("Selecciona al menos un alumno o activa la opcion de todos los alumnos.");
+      return;
+    }
     try {
       await postAction(`/exams/${selectedExam.id}/assign`, {
-        userId: assignmentPayload.userId,
+        userIds: assignmentPayload.allStudents ? undefined : assignmentPayload.userIds,
+        allStudents: assignmentPayload.allStudents,
         startsAt: startsAt?.toISOString(),
         dueAt: dueAt?.toISOString(),
       });
@@ -238,7 +261,7 @@ export default function ExamsPage() {
                 <Button variant="secondary" size="sm" icon={<Upload size={15} aria-hidden />} onClick={() => void publishExam()}>
                   Publicar
                 </Button>
-                <Button size="sm" icon={<Send size={15} aria-hidden />} onClick={() => setAssignOpen(true)}>
+                <Button size="sm" icon={<Send size={15} aria-hidden />} onClick={openAssignModal}>
                   Asignar
                 </Button>
               </div>
@@ -278,14 +301,41 @@ export default function ExamsPage() {
       </Modal>
       <Modal title="Asignar examen" open={assignOpen} onClose={() => setAssignOpen(false)}>
         <form className={styles.form} onSubmit={assignExam}>
-          <Field label="Usuario">
-            <SelectInput required value={assignmentPayload.userId} onChange={(event) => setAssignmentPayload((value) => ({ ...value, userId: event.target.value }))}>
-              <option value="">Seleccionar</option>
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>{user.email}</option>
-              ))}
-            </SelectInput>
-          </Field>
+          <div className={styles.assignmentSummary}>
+            <Users size={18} aria-hidden />
+            <div>
+              <strong>{assignmentPayload.allStudents ? "Todos los alumnos activos" : `${assignmentPayload.userIds.length} alumno(s) seleccionado(s)`}</strong>
+              <span>Las asignaciones existentes se omiten automaticamente.</span>
+            </div>
+          </div>
+          <label className={styles.checkRow}>
+            <input
+              type="checkbox"
+              checked={assignmentPayload.allStudents}
+              onChange={(event) =>
+                setAssignmentPayload((value) => ({
+                  ...value,
+                  allStudents: event.target.checked,
+                  userIds: event.target.checked ? studentUsers.map((user) => user.id) : [],
+                }))
+              }
+            />
+            <span>Seleccionar todos los alumnos activos</span>
+          </label>
+          <div className={styles.studentList} aria-disabled={assignmentPayload.allStudents}>
+            {studentUsers.map((user) => (
+              <label key={user.id} className={styles.checkRow}>
+                <input
+                  type="checkbox"
+                  checked={assignmentPayload.allStudents || assignmentPayload.userIds.includes(user.id)}
+                  disabled={assignmentPayload.allStudents}
+                  onChange={(event) => toggleAssignmentUser(user.id, event.target.checked)}
+                />
+                <span>{user.email}</span>
+              </label>
+            ))}
+            {studentUsers.length === 0 ? <span className={styles.emptyText}>No hay alumnos activos disponibles.</span> : null}
+          </div>
           <div className={styles.twoCols}>
             <Field label="Inicio">
               <TextInput type="datetime-local" value={assignmentPayload.startsAt} onChange={(event) => setAssignmentPayload((value) => ({ ...value, startsAt: event.target.value }))} />
@@ -294,7 +344,9 @@ export default function ExamsPage() {
               <TextInput type="datetime-local" value={assignmentPayload.dueAt} onChange={(event) => setAssignmentPayload((value) => ({ ...value, dueAt: event.target.value }))} />
             </Field>
           </div>
-          <Button type="submit">Asignar</Button>
+          <Button type="submit" disabled={!assignmentPayload.allStudents && assignmentPayload.userIds.length === 0}>
+            Asignar
+          </Button>
         </form>
       </Modal>
     </>

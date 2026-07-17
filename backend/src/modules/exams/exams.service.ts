@@ -11,6 +11,7 @@ import {
   ResultVisibility,
   RoleCode,
   SecurityEventSeverity,
+  UserStatus,
 } from "../../../generated/prisma/client";
 import { AuthenticatedUser } from "../../common/types/authenticated-request";
 import { toSlug } from "../../common/utils/slug";
@@ -404,27 +405,55 @@ export class ExamsService {
       throw new BadRequestException("A published exam version is required for assignment.");
     }
 
-    const assignment = await this.prisma.examAssignment.create({
-      data: {
-        examId,
+    const targetUserIds = await this.resolveAssignmentUserIds(dto);
+    const existingAssignments = await this.prisma.examAssignment.findMany({
+      where: {
         examVersionId: examVersion.id,
-        userId: dto.userId,
-        assignedById: actorUserId,
-        startsAt,
-        dueAt,
-        maxAttemptsOverride: dto.maxAttemptsOverride,
+        userId: { in: targetUserIds },
+        status: AssignmentStatus.ASSIGNED,
       },
-      include: { exam: true, examVersion: true, user: true },
+      select: { userId: true },
     });
+    const existingUserIds = new Set(existingAssignments.map((assignment) => assignment.userId));
+    const userIdsToAssign = targetUserIds.filter((userId) => !existingUserIds.has(userId));
+    const assignments =
+      userIdsToAssign.length > 0
+        ? await this.prisma.$transaction(
+            userIdsToAssign.map((userId) =>
+              this.prisma.examAssignment.create({
+                data: {
+                  examId,
+                  examVersionId: examVersion.id,
+                  userId,
+                  assignedById: actorUserId,
+                  startsAt,
+                  dueAt,
+                  maxAttemptsOverride: dto.maxAttemptsOverride,
+                },
+                include: { exam: true, examVersion: true, user: true },
+              }),
+            ),
+          )
+        : [];
 
     await this.audit.log({
       actorUserId,
-      action: "EXAM_ASSIGNED",
+      action: userIdsToAssign.length === 1 ? "EXAM_ASSIGNED" : "EXAM_ASSIGNED_BULK",
       entityType: "exam_assignment",
-      entityId: assignment.id,
-      metadata: { examId, examVersionId: examVersion.id, userId: dto.userId },
+      entityId: assignments[0]?.id ?? examId,
+      metadata: {
+        examId,
+        examVersionId: examVersion.id,
+        assignedUserIds: userIdsToAssign,
+        skippedUserIds: Array.from(existingUserIds),
+        allStudents: dto.allStudents ?? false,
+      },
     });
-    return assignment;
+    return {
+      assigned: assignments.length,
+      skipped: existingUserIds.size,
+      assignments,
+    };
   }
 
   async startAttempt(assignmentId: string, user: AuthenticatedUser) {
@@ -725,6 +754,38 @@ export class ExamsService {
     if (ownerUserId === user.id) return;
     if (user.roles.includes(RoleCode.ADMIN) || user.roles.includes(RoleCode.REVIEWER)) return;
     throw new ForbiddenException("You cannot access this assignment.");
+  }
+
+  private async resolveAssignmentUserIds(dto: AssignExamDto): Promise<string[]> {
+    if (dto.allStudents) {
+      const students = await this.prisma.user.findMany({
+        where: {
+          status: UserStatus.ACTIVE,
+          deletedAt: null,
+          roles: { some: { role: { code: RoleCode.STUDENT } } },
+        },
+        select: { id: true },
+      });
+      if (students.length === 0) throw new BadRequestException("There are no active students to assign.");
+      return students.map((student) => student.id);
+    }
+
+    const requestedUserIds = Array.from(new Set([...(dto.userIds ?? []), dto.userId].filter(Boolean) as string[]));
+    if (requestedUserIds.length === 0) throw new BadRequestException("At least one student is required for assignment.");
+
+    const students = await this.prisma.user.findMany({
+      where: {
+        id: { in: requestedUserIds },
+        status: UserStatus.ACTIVE,
+        deletedAt: null,
+        roles: { some: { role: { code: RoleCode.STUDENT } } },
+      },
+      select: { id: true },
+    });
+    if (students.length !== requestedUserIds.length) {
+      throw new BadRequestException("Assignments can only be created for active student users.");
+    }
+    return students.map((student) => student.id);
   }
 
   private requiresManualReview(type: QuestionType): boolean {
