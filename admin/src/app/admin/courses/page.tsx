@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/Badge";
 import type { Column } from "@/components/ui/DataTable";
 import { CrudPage } from "@/components/admin/CrudPage";
-import { adminApi, createResource } from "@/lib/resources";
+import { adminApi, createResource, deleteResource } from "@/lib/resources";
 import type { Course } from "@/types/api";
 
 const columns: Column<Course>[] = [
@@ -24,6 +24,10 @@ export default function CoursesPage() {
       load={adminApi.courses}
       createLabel="Crear curso"
       create={(payload) => createResource("/courses", payload)}
+      archive={(course) => deleteResource(`/courses/${course.id}`)}
+      archiveConfirmMessage={(course) =>
+        `El curso "${course.title}" se eliminara de la vista activa, pero quedara archivado para conservar historial. ¿Deseas continuar?`
+      }
       fields={[
         { name: "title", label: "Titulo", required: true },
         { name: "slug", label: "Slug" },

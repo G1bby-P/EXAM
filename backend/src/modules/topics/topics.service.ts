@@ -19,6 +19,7 @@ export class TopicsService {
     const limit = query.limit ?? 20;
     const where: Prisma.TopicWhereInput = {
       courseId: query.courseId,
+      archivedAt: null,
       OR: query.search
         ? [
             { title: { contains: query.search, mode: "insensitive" } },

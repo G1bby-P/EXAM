@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, RefreshCw, Search } from "lucide-react";
+import { Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import type { Column } from "@/components/ui/DataTable";
 import { Button } from "@/components/ui/Button";
@@ -30,6 +30,9 @@ interface CrudPageProps<T> {
   getRowKey: (item: T) => string;
   load: (params: { page: number; limit: number; search?: string }) => Promise<Paginated<T>>;
   create?: (payload: Record<string, unknown>) => Promise<unknown>;
+  archive?: (item: T) => Promise<unknown>;
+  archiveLabel?: string;
+  archiveConfirmMessage?: (item: T) => string;
   fields?: FormField[];
   extraActions?: ReactNode;
 }
@@ -43,6 +46,9 @@ export function CrudPage<T>({
   getRowKey,
   load,
   create,
+  archive,
+  archiveLabel = "Eliminar",
+  archiveConfirmMessage,
   fields = [],
   extraActions,
 }: CrudPageProps<T>) {
@@ -54,6 +60,7 @@ export function CrudPage<T>({
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [archivingId, setArchivingId] = useState<string | null>(null);
 
   const limit = 20;
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -110,6 +117,50 @@ export function CrudPage<T>({
     }
   }
 
+  async function handleArchive(item: T) {
+    if (!archive) return;
+    const message =
+      archiveConfirmMessage?.(item) ??
+      "El registro se eliminara de la vista activa, pero quedara archivado para conservar el historial. ¿Deseas continuar?";
+    if (!window.confirm(message)) return;
+
+    const itemId = getRowKey(item);
+    setArchivingId(itemId);
+    setError(null);
+    try {
+      await archive(item);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo eliminar el registro.");
+    } finally {
+      setArchivingId(null);
+    }
+  }
+
+  const visibleColumns: Column<T>[] = archive
+    ? [
+        ...columns,
+        {
+          key: "actions",
+          header: "Acciones",
+          render: (item) => {
+            const itemId = getRowKey(item);
+            return (
+              <Button
+                variant="danger"
+                size="sm"
+                icon={<Trash2 size={15} aria-hidden />}
+                disabled={archivingId === itemId}
+                onClick={() => void handleArchive(item)}
+              >
+                {archivingId === itemId ? "Eliminando" : archiveLabel}
+              </Button>
+            );
+          },
+        },
+      ]
+    : columns;
+
   return (
     <>
       <PageHeader
@@ -140,7 +191,7 @@ export function CrudPage<T>({
         </Button>
       </form>
       {error ? <ErrorState message={error} /> : null}
-      {loading ? <LoadingState /> : <DataTable columns={columns} rows={items} getRowKey={getRowKey} />}
+      {loading ? <LoadingState /> : <DataTable columns={visibleColumns} rows={items} getRowKey={getRowKey} />}
       <div className={styles.pagination}>
         <span>
           {total} registros - pagina {page} de {totalPages}

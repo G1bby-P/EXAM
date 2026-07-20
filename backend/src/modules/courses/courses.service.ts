@@ -18,6 +18,7 @@ export class CoursesService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const where: Prisma.CourseWhereInput = {
+      archivedAt: null,
       OR: query.search
         ? [
             { title: { contains: query.search, mode: "insensitive" } },
@@ -28,7 +29,7 @@ export class CoursesService {
     const [items, total] = await this.prisma.$transaction([
       this.prisma.course.findMany({
         where,
-        include: { topics: { orderBy: { sortOrder: "asc" } } },
+        include: { topics: { where: { archivedAt: null }, orderBy: { sortOrder: "asc" } } },
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * limit,
         take: limit,

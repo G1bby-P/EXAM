@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import type { Column } from "@/components/ui/DataTable";
 import { CrudPage, type FormField } from "@/components/admin/CrudPage";
-import { adminApi, createResource } from "@/lib/resources";
+import { adminApi, createResource, deleteResource } from "@/lib/resources";
 import type { Course, Topic } from "@/types/api";
 
 const columns: Column<Topic>[] = [
@@ -45,6 +45,10 @@ export default function TopicsPage() {
       load={adminApi.topics}
       createLabel="Crear tema"
       create={(payload) => createResource("/topics", payload)}
+      archive={(topic) => deleteResource(`/topics/${topic.id}`)}
+      archiveConfirmMessage={(topic) =>
+        `El tema "${topic.title}" se eliminara de la vista activa, pero quedara archivado para conservar historial. ¿Deseas continuar?`
+      }
       fields={fields}
     />
   );
